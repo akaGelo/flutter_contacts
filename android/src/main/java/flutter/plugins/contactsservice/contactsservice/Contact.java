@@ -59,6 +59,7 @@ public class Contact implements Comparable<Contact> {
     static Contact fromMap(HashMap map) {
         Contact contact = new Contact();
         contact.identifier = (String) map.get("identifier");
+        contact.displayName = (String) map.get("displayName");
         contact.givenName = (String) map.get("givenName");
         contact.middleName = (String) map.get("middleName");
         contact.familyName = (String) map.get("familyName");
@@ -94,8 +95,7 @@ public class Contact implements Comparable<Contact> {
     @Override
     public int compareTo(Contact contact) {
         String givenName1 = this.givenName == null ? "" : this.givenName.toLowerCase();
-        String givenName2 = contact == null ? ""
-            : (contact.givenName == null ? "" : contact.givenName.toLowerCase());
+        String givenName2 = contact == null ? "" : (contact.givenName == null ? "" : contact.givenName.toLowerCase());
         return givenName1.compareTo(givenName2);
     }
 }
