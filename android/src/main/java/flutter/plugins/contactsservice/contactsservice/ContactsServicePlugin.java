@@ -62,7 +62,7 @@ public class ContactsServicePlugin implements MethodCallHandler {
       case "getContacts": {
         this.getContacts((String)call.argument("query"), (boolean)call.argument("withThumbnails"), (boolean)call.argument("photoHighResolution"), (boolean)call.argument("orderByGivenName"), result);
         break;
-      } case "getContactsForPhone": {
+      }case "getContactsForPhone": {
         this.getContactsForPhone((String)call.argument("phone"), (boolean)call.argument("withThumbnails"), (boolean)call.argument("photoHighResolution"), (boolean)call.argument("orderByGivenName"), result);
         break;
       } case "getAvatar": {
@@ -100,229 +100,23 @@ public class ContactsServicePlugin implements MethodCallHandler {
     }
   }
 
-  private static final String[] PROJECTION =
-          {
-                  ContactsContract.Data.CONTACT_ID,
-                  ContactsContract.Profile.DISPLAY_NAME,
-                  ContactsContract.Contacts.Data.MIMETYPE,
-                  StructuredName.DISPLAY_NAME,
-                  StructuredName.GIVEN_NAME,
-                  StructuredName.MIDDLE_NAME,
-                  StructuredName.FAMILY_NAME,
-                  StructuredName.PREFIX,
-                  StructuredName.SUFFIX,
-                  CommonDataKinds.Note.NOTE,
-                  Phone.NUMBER,
-                  Phone.TYPE,
-                  Phone.LABEL,
-                  Email.DATA,
-                  Email.ADDRESS,
-                  Email.TYPE,
-                  Email.LABEL,
-                  Organization.COMPANY,
-                  Organization.TITLE,
-                  StructuredPostal.FORMATTED_ADDRESS,
-                  StructuredPostal.TYPE,
-                  StructuredPostal.LABEL,
-                  StructuredPostal.STREET,
-                  StructuredPostal.POBOX,
-                  StructuredPostal.NEIGHBORHOOD,
-                  StructuredPostal.CITY,
-                  StructuredPostal.REGION,
-                  StructuredPostal.POSTCODE,
-                  StructuredPostal.COUNTRY,
-          };
 
 
   @TargetApi(Build.VERSION_CODES.ECLAIR)
   private void getContacts(String query, boolean withThumbnails, boolean photoHighResolution, boolean orderByGivenName, Result result) {
-    new GetContactsTask(result, withThumbnails, photoHighResolution, orderByGivenName).executeOnExecutor(executor, query, false);
+    new GetContactsTask(contentResolver, result, withThumbnails, photoHighResolution, orderByGivenName).executeOnExecutor(executor, query);
   }
 
   private void getContactsForPhone(String phone, boolean withThumbnails, boolean photoHighResolution, boolean orderByGivenName, Result result) {
-    new GetContactsTask(result, withThumbnails, photoHighResolution, orderByGivenName).executeOnExecutor(executor, phone, true);
-  }
-
-  @TargetApi(Build.VERSION_CODES.CUPCAKE)
-  private class GetContactsTask extends AsyncTask<Object, Void, ArrayList<HashMap>> {
-
-    private Result getContactResult;
-    private boolean withThumbnails;
-    private boolean photoHighResolution;
-    private boolean orderByGivenName;
-
-    public GetContactsTask(Result result, boolean withThumbnails, boolean photoHighResolution, boolean orderByGivenName){
-      this.getContactResult = result;
-      this.withThumbnails = withThumbnails;
-      this.photoHighResolution = photoHighResolution;
-      this.orderByGivenName = orderByGivenName;
-    }
-
-    @TargetApi(Build.VERSION_CODES.ECLAIR)
-    protected ArrayList<HashMap> doInBackground(Object... params) {
-      ArrayList<Contact> contacts;
-      if ((Boolean) params[1])
-        contacts = getContactsFrom(getCursorForPhone(((String) params[0])));
-      else
-        contacts = getContactsFrom(getCursor(((String) params[0])));
-
-      if (withThumbnails) {
-        for(Contact c : contacts){
-          final byte[] avatar = loadContactPhotoHighRes(
-              c.identifier, photoHighResolution, contentResolver);
-          if (avatar != null) {
-            c.avatar = avatar;
-          } else {
-            // To stay backwards-compatible, return an empty byte array rather than `null`.
-            c.avatar = new byte[0];
-          }
-//          if ((Boolean) params[3])
-//              loadContactPhotoHighRes(c.identifier, (Boolean) params[3]);
-//          else
-//              setAvatarDataForContactIfAvailable(c);
-        }
-      }
-
-      if (orderByGivenName)
-      {
-        Comparator<Contact> compareByGivenName = new Comparator<Contact>() {
-          @Override
-          public int compare(Contact contactA, Contact contactB) {
-            return contactA.compareTo(contactB);
-          }
-        };
-        Collections.sort(contacts,compareByGivenName);
-      }
-
-      //Transform the list of contacts to a list of Map
-      ArrayList<HashMap> contactMaps = new ArrayList<>();
-      for(Contact c : contacts){
-        contactMaps.add(c.toMap());
-      }
-
-      return contactMaps;
-    }
-
-    protected void onPostExecute(ArrayList<HashMap> result) {
-      getContactResult.success(result);
-    }
+    new GetContactsTaskFromPhone(contentResolver, result, withThumbnails, photoHighResolution, orderByGivenName).executeOnExecutor(executor, phone);
   }
 
 
-  private Cursor getCursor(String query) {
-    String selection = ContactsContract.Data.MIMETYPE + "=? OR " + ContactsContract.Data.MIMETYPE + "=? OR "
-        + ContactsContract.Data.MIMETYPE + "=? OR " + ContactsContract.Data.MIMETYPE + "=? OR "
-        + ContactsContract.Data.MIMETYPE + "=? OR " + ContactsContract.Data.MIMETYPE + "=? OR "
-        + ContactsContract.Data.MIMETYPE + "=?";
-    String[] selectionArgs = new String[] { CommonDataKinds.Note.CONTENT_ITEM_TYPE, Email.CONTENT_ITEM_TYPE,
-        Phone.CONTENT_ITEM_TYPE, StructuredName.CONTENT_ITEM_TYPE, Organization.CONTENT_ITEM_TYPE,
-        StructuredPostal.CONTENT_ITEM_TYPE, CommonDataKinds.Event.CONTENT_ITEM_TYPE, };
-    if(query != null){
-      selectionArgs = new String[]{query + "%"};
-      selection = ContactsContract.Contacts.DISPLAY_NAME_PRIMARY + " LIKE ?";
-    }
 
-    return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, selection, selectionArgs, null);
-  }
 
-  private Cursor getCursorForPhone(String phone) {
-    if (phone.isEmpty())
-      return null;
-
-    Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(phone));
-    String[] projection = new String[]{BaseColumns._ID};
-
-    ArrayList<String> contactIds = new ArrayList<>();
-    Cursor phoneCursor = contentResolver.query(uri, projection, null, null, null);
-    while (phoneCursor != null && phoneCursor.moveToNext()){
-      contactIds.add(phoneCursor.getString(phoneCursor.getColumnIndex(BaseColumns._ID)));
-    }
-    if (phoneCursor!= null)
-      phoneCursor.close();
-
-    if (!contactIds.isEmpty()) {
-      String contactIdsListString = contactIds.toString().replace("[", "(").replace("]", ")");
-      String contactSelection = ContactsContract.Data.CONTACT_ID + " IN " + contactIdsListString;
-      return contentResolver.query(ContactsContract.Data.CONTENT_URI, PROJECTION, contactSelection, null, null);
-    }
-
-    return null;
-  }
-
-  /**
-   * Builds the list of contacts from the cursor
-   * @param cursor
-   * @return the list of contacts
-   */
-  private ArrayList<Contact> getContactsFrom(Cursor cursor) {
-    HashMap<String, Contact> map = new LinkedHashMap<>();
-
-    while (cursor != null && cursor.moveToNext()) {
-      int columnIndex = cursor.getColumnIndex(ContactsContract.Data.CONTACT_ID);
-      String contactId = cursor.getString(columnIndex);
-
-      if (!map.containsKey(contactId)) {
-        map.put(contactId, new Contact(contactId));
-      }
-      Contact contact = map.get(contactId);
-
-      String mimeType = cursor.getString(cursor.getColumnIndex(ContactsContract.Data.MIMETYPE));
-      contact.displayName = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
-
-      //NAMES
-      if (mimeType.equals(CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)) {
-        contact.givenName = cursor.getString(cursor.getColumnIndex(StructuredName.GIVEN_NAME));
-        contact.middleName = cursor.getString(cursor.getColumnIndex(StructuredName.MIDDLE_NAME));
-        contact.familyName = cursor.getString(cursor.getColumnIndex(StructuredName.FAMILY_NAME));
-        contact.prefix = cursor.getString(cursor.getColumnIndex(StructuredName.PREFIX));
-        contact.suffix = cursor.getString(cursor.getColumnIndex(StructuredName.SUFFIX));
-      }
-      // NOTE
-      else if (mimeType.equals(CommonDataKinds.Note.CONTENT_ITEM_TYPE)) {
-        contact.note = cursor.getString(cursor.getColumnIndex(CommonDataKinds.Note.NOTE));
-      }
-      //PHONES
-      else if (mimeType.equals(CommonDataKinds.Phone.CONTENT_ITEM_TYPE)){
-        String phoneNumber = cursor.getString(cursor.getColumnIndex(Phone.NUMBER));
-        int type = cursor.getInt(cursor.getColumnIndex(Phone.TYPE));
-        if (!TextUtils.isEmpty(phoneNumber)){
-          contact.phones.add(new Item(Item.getPhoneLabel(type),phoneNumber));
-        }
-      }
-      //MAILS
-      else if (mimeType.equals(CommonDataKinds.Email.CONTENT_ITEM_TYPE)) {
-        String email = cursor.getString(cursor.getColumnIndex(Email.ADDRESS));
-        int type = cursor.getInt(cursor.getColumnIndex(Email.TYPE));
-        if (!TextUtils.isEmpty(email)) {
-          contact.emails.add(new Item(Item.getEmailLabel(type, cursor),email));
-        }
-      }
-      //ORG
-      else if (mimeType.equals(CommonDataKinds.Organization.CONTENT_ITEM_TYPE)) {
-        contact.company = cursor.getString(cursor.getColumnIndex(Organization.COMPANY));
-        contact.jobTitle = cursor.getString(cursor.getColumnIndex(Organization.TITLE));
-      }
-      //ADDRESSES
-      else if (mimeType.equals(CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE)) {
-        contact.postalAddresses.add(new PostalAddress(cursor));
-      }
-      // BIRTHDAY
-      else if (mimeType.equals(CommonDataKinds.Event.CONTENT_ITEM_TYPE)) {
-        int eventType = cursor.getInt(cursor.getColumnIndex(CommonDataKinds.Event.TYPE));
-        if (eventType == CommonDataKinds.Event.TYPE_BIRTHDAY) {
-          contact.birthday = cursor.getString(cursor.getColumnIndex(CommonDataKinds.Event.START_DATE));
-        }
-      }
-    }
-
-    if(cursor != null)
-      cursor.close();
-
-    return new ArrayList<>(map.values());
-  }
 
   private void setAvatarDataForContactIfAvailable(Contact contact) {
-    Uri contactUri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, Integer.parseInt(contact.identifier));
+    Uri contactUri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, contact.identifier);
     Uri photoUri = Uri.withAppendedPath(contactUri, ContactsContract.Contacts.Photo.CONTENT_DIRECTORY);
     Cursor avatarCursor = contentResolver.query(photoUri,
             new String[] {ContactsContract.Contacts.Photo.PHOTO}, null, null, null);
@@ -366,10 +160,10 @@ public class ContactsServicePlugin implements MethodCallHandler {
     }
   }
 
-  private static byte[] loadContactPhotoHighRes(final String identifier,
+  static byte[] loadContactPhotoHighRes(final Integer identifier,
       final boolean photoHighResolution, final ContentResolver contentResolver) {
     try {
-      final Uri uri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, Long.parseLong(identifier));
+      final Uri uri = ContentUris.withAppendedId(ContactsContract.Contacts.CONTENT_URI, identifier);
       final InputStream input = ContactsContract.Contacts.openContactPhotoInputStream(contentResolver, uri, photoHighResolution);
 
       if (input == null) return null;

@@ -5,14 +5,14 @@ import java.util.HashMap;
 
 public class Contact implements Comparable<Contact> {
 
-    Contact(String id) {
+    Contact(Integer id) {
         this.identifier = id;
     }
 
     private Contact() {
     }
 
-    String identifier;
+    Integer identifier;
     String displayName, givenName, middleName, familyName, prefix, suffix, company, jobTitle, note, birthday;
     ArrayList<Item> emails = new ArrayList<>();
     ArrayList<Item> phones = new ArrayList<>();
@@ -58,7 +58,7 @@ public class Contact implements Comparable<Contact> {
     @SuppressWarnings("unchecked")
     static Contact fromMap(HashMap map) {
         Contact contact = new Contact();
-        contact.identifier = (String) map.get("identifier");
+        contact.identifier = (Integer) map.get("identifier");
         contact.displayName = (String) map.get("displayName");
         contact.givenName = (String) map.get("givenName");
         contact.middleName = (String) map.get("middleName");

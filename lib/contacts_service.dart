@@ -85,7 +85,8 @@ class Contact {
     this.birthday,
   });
 
-  String identifier, displayName, givenName, middleName, prefix, suffix, familyName, company, jobTitle;
+  int identifier;
+  String displayName, givenName, middleName, prefix, suffix, familyName, company, jobTitle;
   Iterable<Item> emails = [];
   Iterable<Item> phones = [];
   Iterable<PostalAddress> postalAddresses = [];

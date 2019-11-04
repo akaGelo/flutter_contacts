@@ -8,10 +8,10 @@ public class ContactTest {
 
   @Test
   public void compareTo_nullParam() {
-    Contact contact1 = new Contact("id");
+    Contact contact1 = new Contact(0);
     contact1.givenName = "givenName";
 
-    Contact contact2 = new Contact("id2");
+    Contact contact2 = new Contact(2);
 
     assertThat(contact1.compareTo(contact2))
         .isGreaterThan(0);
@@ -19,10 +19,10 @@ public class ContactTest {
 
   @Test
   public void compareTo_largerParam() {
-    Contact contact1 = new Contact("id");
+    Contact contact1 = new Contact(0);
     contact1.givenName = "a";
 
-    Contact contact2 = new Contact("id2");
+    Contact contact2 = new Contact(2);
     contact2.givenName = "b";
 
     assertThat(contact1.compareTo(contact2))
@@ -31,10 +31,10 @@ public class ContactTest {
 
   @Test
   public void compareTo_smallerParam() {
-    Contact contact1 = new Contact("id");
+    Contact contact1 = new Contact(0);
     contact1.givenName = "b";
 
-    Contact contact2 = new Contact("id2");
+    Contact contact2 = new Contact(2);
     contact2.givenName = "a";
 
     assertThat(contact1.compareTo(contact2))
@@ -43,10 +43,10 @@ public class ContactTest {
 
   @Test
   public void compareTo_givenNameNull() {
-    Contact contact1 = new Contact("id");
+    Contact contact1 = new Contact(0);
     contact1.givenName = null;
 
-    Contact contact2 = new Contact("id2");
+    Contact contact2 = new Contact(2);
     contact2.givenName = null;
 
     assertThat(contact1.compareTo(contact2))
@@ -55,10 +55,10 @@ public class ContactTest {
 
   @Test
   public void compareTo_currentContactGivenNameNull() {
-    Contact contact1 = new Contact("id");
+    Contact contact1 = new Contact(0);
     contact1.givenName = null;
 
-    Contact contact2 = new Contact("id2");
+    Contact contact2 = new Contact(2);
     contact2.givenName = "b";
 
     assertThat(contact1.compareTo(contact2))
@@ -67,7 +67,7 @@ public class ContactTest {
 
   @Test
   public void compareTo_nullContact() {
-    Contact contact1 = new Contact("id");
+    Contact contact1 = new Contact(0);
     contact1.givenName = "a";
 
     assertThat(contact1.compareTo(null))
@@ -76,13 +76,13 @@ public class ContactTest {
 
   @Test
   public void compareTo_transitiveCompare() {
-    Contact contact1 = new Contact("id");
+    Contact contact1 = new Contact(0);
     contact1.givenName = "b";
 
-    Contact contact2 = new Contact("id2");
+    Contact contact2 = new Contact(2);
     contact2.givenName = "a";
 
-    Contact contact3 = new Contact("id3");
+    Contact contact3 = new Contact(3);
     contact3.givenName = null;
 
     // b > a
